@@ -657,13 +657,10 @@ def recommend_dialog_transformers():
         for p in plugs:
             click.echo(f" - {p}")
 
-    if "ovos-dialog-transformer-openai-plugin" in plugs:
-        # TODO - check if key is set
-        click.echo(
-            f"INFO: 'ovos-dialog-transformer-openai-plugin' can rewrite dialogs on demand via ChatGPT (or OpenAI compatible API)")
-    if "ovos-dialog-translation-plugin" in plugs:
-        click.echo(
-            f"INFO: 'ovos-dialog-translation-plugin' works together with 'ovos-utterance-translation-plugin', automatically translates utterances back to the user language")
+    for p, info in DIALOG_TRANSFORMER_INFO.items():
+        if p in plugs:
+            click.echo(f"INFO: '{p}' - {info}")
+            
     click.echo("Nothing to recommend")
 
 
@@ -680,8 +677,9 @@ def recommend_tts_transformers():
         for p in plugs:
             click.echo(f" - {p}")
 
-    if "ovos-tts-transformer-sox-plugin" in plugs:
-        click.echo("INFO: 'ovos-tts-transformer-sox-plugin' can apply effects to TTS, such as pitch or rate changes")
+    for p, info in TTS_TRANSFORMER_INFO.items():
+        if p in plugs:
+            click.echo(f"INFO: '{p}' - {info}")
 
     click.echo("Nothing to recommend")
 
@@ -689,8 +687,11 @@ def recommend_tts_transformers():
 @skills.command()
 def recommend_pipeline():
     """recommend Pipeline config """
-    # TODO - check padatious
-    click.echo("Nothing to recommend")  # TODO
+    try:
+        import padatious
+        click.echo("Nothing to recommend")  # TODO
+    except ImportError:
+        click.echo("WARNING: 'padatious' is not installed, intent matching will be much slower when using 'padacioso'") 
 
 
 @skills.command()
@@ -1128,6 +1129,12 @@ UTTERANCE_INFO = {
     "ovos-utterance-corrections-plugin": " allows you to manually correct common STT mistakes",
     "ovos-utterance-translation-plugin": "works together with 'ovos-dialog-translation-plugin' providing bidirectional translation for utterances in unsupported languages, very useful for chat inputs"
 }
+DIALOG_TRANSFORMER_INFO = {
+    "ovos-dialog-transformer-openai-plugin": "can rewrite dialogs on demand via ChatGPT (or OpenAI compatible API)",
+    "ovos-dialog-translation-plugin": "works together with 'ovos-utterance-translation-plugin', automatically translates utterances back to the user language"
+}
+TTS_TRANSFORMER_INFO = {"ovos-tts-transformer-sox-plugin": "can apply effects to TTS, such as pitch or rate changes"}
+
 PHAL_ESSENTIAL = {
     "ovos-phal-plugin-connectivity-events": "improves reaction to network state changes",
     "ovos-phal-plugin-ipgeo": "ensures approximate location and timezone until users configure it",
