@@ -44,7 +44,10 @@ def is_gpu_available():
 
 ###################################3
 # Platform Info
-
+LANG = CONFIG.get("lang")
+HOMESCREEN_ID = CONFIG.get("gui", {}).get("idle_display_skill")
+HAS_SHELL = is_installed('ovos-shell')
+HAS_GUI = is_installed('ovos-shell') or is_installed('ovos-gui-app') or  is_installed('mycroft-gui-app')
 HAS_GPU = is_gpu_available()
 IS_RPI = is_raspberry_pi()
 IS_LINUX = platform.system() == "Linux"
@@ -52,7 +55,6 @@ IS_MK_1 = False  # TODO
 IS_MK_2 = False  # TODO
 IS_MK_2_DEVKIT = False  # TODO
 IS_DOTSTAR = False  # TODO
-
 
 ###################################3
 # COMMAND GROUPS
@@ -317,35 +319,30 @@ def recommend_extensions():
     skills = list(find_skill_plugins())
 
     # perform these checks
-    is_shell = is_installed('ovos-shell')
-    click.echo(f"  - ovos-shell installed: {is_shell}")
-    is_gui = is_installed('ovos-gui-app')
-    click.echo(f"  - ovos-gui-app installed: {is_gui}")
-    is_old = is_installed('mycroft-gui-app')
-    click.echo(f"  - deprecated mycroft-gui: {is_old}")
-    homescreen_id = CONFIG.get("gui", {}).get("idle_display_skill")
-    homescreen_installed = homescreen_id in skills
-    click.echo(f"  - homescreen skill: {homescreen_id}")
-    click.echo(f"  - homescreen installed: {homescreen_installed}")
+    homescreen_installed = HOMESCREEN_ID in skills
 
     if not plugs:
         click.echo("WARNING: No GUI plugins installed!!!")
     else:
-
         click.echo("Available plugins:")
         for p in plugs:
             click.echo(f" - {p}")
-    if not is_shell and not is_gui and not is_old:
-        click.echo("WARNING: no GUI client installed")
-    elif not homescreen_installed:
-        click.echo(f"WARNING: GUI installed, but homescreen missing, please install '{homescreen_id}'")
 
-    if not is_shell and "ovos-gui-plugin-shell-companion" in plugs:
-        click.echo(
-            "WARNING: 'ovos-gui-plugin-shell-companion' is installed, but ovos-shell is missing, either remove the plugin or install ovos-shell")
-    elif is_shell and "ovos-gui-plugin-shell-companion" not in plugs:
-        click.echo(
-            "WARNING: ovos-shell is installed, but the companion plugin is missing, please install 'ovos-gui-plugin-shell-companion'")
+    EXT = "ovos-gui-plugin-shell-companion"
+    if IS_MK_2 and not HAS_SHELL:
+        click.echo("ERROR: ovos-shell not installed")
+    elif not HAS_GUI and not IS_MK_1:
+        click.echo("WARNING: no GUI client installed")
+
+    if IS_MK_2 and CONFIG.get("gui", {}).get("extension", "") != EXT:
+        click.echo(f"ERROR: 'gui.extension' is NOT set to '{EXT}' in 'mycroft.conf'")
+    if HAS_GUI and not homescreen_installed:
+        click.echo(f"WARNING: GUI installed, but homescreen missing, please install '{HOMESCREEN_ID}'")
+
+    if HAS_SHELL and EXT not in plugs:
+        click.echo(f"RECOMMENDED GUI PLUGIN: ovos-shell is installed, but the companion plugin is missing, please install '{EXT}'")
+    if not HAS_SHELL and not IS_MK_2 and "ovos-gui-plugin-shell-companion" in plugs:
+        click.echo(f"UNINSTALL: '{EXT}' is installed, but ovos-shell is missing, either remove the plugin or install ovos-shell")
 
 
 @audio.command()
@@ -959,18 +956,22 @@ def recommend_vad():
         click.echo("Available plugins:")
         for p in plugs:
             click.echo(f" - {p}")
-        if "ovos-vad-plugin-silero" in plugs:
-            recommendation = "'ovos-vad-plugin-silero' - best accuracy, lightweight"
-        # TODO - uncomment once the plugin gets some QA
-        # elif "ovos-vad-plugin-webrtcvad" in plugs:
-        #    recommendation = "'ovos-vad-plugin-webrtcvad' - medium accuracy, lightweight, configurable"
-        elif "ovos-vad-plugin-noise" in plugs:
-            recommendation = "'ovos-vad-plugin-noise' - worst accuracy, lightweight, no external dependencies, configurable"
-        elif len(plugs) == 1:
-            recommendation = f"'{plugs[0]}' - only installed plugin"
+
+        VAD_PREFS = [
+            ("ovos-vad-plugin-silero", "best accuracy, lightweight"),
+            ("ovos-vad-plugin-noise", "worst accuracy, lightweight, silence based, no external dependencies, configurable"),
+            ("ovos-vad-plugin-precise", "moderate accuracy, lightweight, needs tweaking to work well"),
+            ("ovos-vad-plugin-webrtcvad", "lightweight, silence based, has issues in some platforms")
+        ]
+        for p, info in VAD_PREFS:
+            if p in plugs:
+                click.echo(f"RECOMMENDATION:  {p}' - {info}")
+                break
         else:
-            recommendation = f"not sure what to recommend"
-        click.echo(f"RECOMMENDATION: {recommendation}")
+            if len(plugs) == 1:
+                click.echo(f"'RECOMMENDATION: {plugs[0]}' - only installed plugin")
+            else:
+                click.echo("RECOMMENDATION: not sure what to recommend")
 
 
 @skills.command()
