@@ -625,24 +625,11 @@ def recommend_ocp():
         for p in plugs:
             click.echo(f" - {p}")
 
-        essential = {
-            "ovos-ocp-rss-plugin": "",
-            "ovos-ocp-m3u-plugin": "",
-            "ovos-ocp-youtube-plugin": ""
-        }
-
-        if all([p in plugs for p in essential]):
-            click.echo("All recommended plugins installed!")
-        else:
-            if "ovos-ocp-rss-plugin" not in plugs:
-                click.echo(
-                    f"RECOMMENDED EXTRA: ovos-ocp-rss-plugin - allows extracting streams from rss feeds, crucial for news")
-            if "ovos-ocp-youtube-plugin" not in plugs:
-                click.echo(
-                    f"RECOMMENDED EXTRA: ovos-ocp-youtube-plugin - yt-dlp allows extracting streams from several webpages, not only youtube!")
-            if "ovos-ocp-m3u-plugin" not in plugs:
-                click.echo(
-                    f"RECOMMENDED EXTRA: ovos-ocp-m3u-plugin - needed for .pls and .m3u streams, common in internet radio")
+        for plug, info in OCP_ESSENTIAL.items():
+            if plug not in plugs:
+                click.echo(f"RECOMMENDED OCP PLUGIN: '{plug}' - {info}")
+            else:
+                click.echo(f"INFO: '{plug}' - {info}")
 
 
 @audio.command()
@@ -660,7 +647,7 @@ def recommend_dialog_transformers():
     for p, info in DIALOG_TRANSFORMER_INFO.items():
         if p in plugs:
             click.echo(f"INFO: '{p}' - {info}")
-            
+
     click.echo("Nothing to recommend")
 
 
@@ -691,7 +678,7 @@ def recommend_pipeline():
         import padatious
         click.echo("Nothing to recommend")  # TODO
     except ImportError:
-        click.echo("WARNING: 'padatious' is not installed, intent matching will be much slower when using 'padacioso'") 
+        click.echo("WARNING: 'padatious' is not installed, intent matching will be much slower when using 'padacioso'")
 
 
 @skills.command()
@@ -830,25 +817,20 @@ def recommend_reranker():
         for p in plugs:
             click.echo(f" - {p}")
 
-        best = None
-        if "ovos-flashrank-reranker-plugin" in plugs and not IS_RPI:
-            best = "ovos-flashrank-reranker-plugin"
-            recommendation = "best, lightweight and fast"
-            if HAS_GPU:
-                recommendation += ", GPU allows usage of better models"
-        elif "ovos-bm25-reranker-plugin" in plugs:
-            best = "ovos-bm25-reranker-plugin"
-            recommendation = "lightweight and fast, based on text similarity"
-        elif "ovos-choice-solver-bm25" in plugs:
-            best = "ovos-choice-solver-bm25"
-            recommendation = "no extra dependencies, comes from 'ovos-classifiers'"
-        elif len(plugs) == 1:
-            best = plugs[0]
-            recommendation = "only installed plugin"
+        for plug, info in RERANKER_PREFS:
+            if plug in plugs:
+                if IS_RPI and plug in RERANKER_RPI_BLACKLIST:
+                    continue
+                click.echo(f"RECOMMENDED DEFAULT: {plug} - {info}")
+                break
         else:
-            recommendation = "not sure what to recommend"
-
-        click.echo(f"RECOMMENDED DEFAULT: {best} - {recommendation}")
+            if len(plugs) == 1:
+                best = plugs[0]
+                recommendation = "only installed plugin"
+            else:
+                best = None
+                recommendation = "not sure what to recommend"
+            click.echo(f"RECOMMENDED DEFAULT: {best} - {recommendation}")
 
 
 @listener.command()
@@ -1123,6 +1105,19 @@ def recommend_platform():
 
 #######################################################
 # Recommendations are defined here, manually maintained
+RERANKER_RPI_BLACKLIST = ["ovos-flashrank-reranker-plugin"]
+RERANKER_PREFS = [
+    ("ovos-flashrank-reranker-plugin", "best, lightweight and fast"),
+    ("ovos-bm25-reranker-plugin", "lightweight and fast, based on text similarity" ),
+    ("ovos-choice-solver-bm25", "no extra dependencies, comes from 'ovos-classifiers'")
+]
+
+
+OCP_ESSENTIAL = {
+    "ovos-ocp-rss-plugin": "allows extracting streams from rss feeds, crucial for news",
+    "ovos-ocp-youtube-plugin": "yt-dlp allows extracting streams from several webpages, not only youtube!",
+    "ovos-ocp-m3u-plugin": "needed for .pls and .m3u streams, common in internet radio"
+}
 METADATA_INFO = {}
 UTTERANCE_INFO = {
     "ovos-utterance-plugin-cancel": "can cancel utterances on false activations or when you change your mind mid sentence",
