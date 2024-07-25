@@ -42,7 +42,9 @@ def is_gpu_available():
     return False
 
 
+###################################3
 # Platform Info
+
 HAS_GPU = is_gpu_available()
 IS_RPI = is_raspberry_pi()
 IS_LINUX = platform.system() == "Linux"
@@ -50,6 +52,10 @@ IS_MK_1 = False  # TODO
 IS_MK_2 = False  # TODO
 IS_MK_2_DEVKIT = False  # TODO
 IS_DOTSTAR = False  # TODO
+
+
+###################################3
+# COMMAND GROUPS
 
 
 @click.group()
@@ -94,7 +100,17 @@ def audio():
     pass
 
 
-# LIST
+# Add groups to the main CLI group
+cli.add_command(language)
+cli.add_command(audio)
+cli.add_command(listener)
+cli.add_command(skills)
+cli.add_command(phal)
+cli.add_command(gui)
+
+
+###################################3
+# SCAN
 
 @language.command()
 def scan_translation():
@@ -288,7 +304,10 @@ def scan_extensions():
         click.echo(f" {idx} - {plugin}")
 
 
-### RECOMMEND
+###################################3
+# RECOMMEND
+
+
 @gui.command()
 def recommend_extensions():
     """recommend GUI config """
@@ -1055,7 +1074,7 @@ def recommend_platform():
         for p in GPU_ONLY_PHAL:
             if p in plugs:
                 click.echo(f"UNINSTALL: '{p}', it requires a GPU")
-                
+
     if IS_RPI:
         for plug, rec in PHAL_RPI_ESSENTIAL.items():
             if plug not in plugs:
@@ -1100,19 +1119,286 @@ def recommend_platform():
         for p in MK2DEV_ONLY_PHAL:
             if p in plugs:
                 click.echo(f"UNINSTALL: '{p}', it is for Mark2 DevKit only")
-        
 
-# Add groups to the main CLI group
-cli.add_command(language)
-cli.add_command(audio)
-cli.add_command(listener)
-cli.add_command(skills)
-cli.add_command(phal)
-cli.add_command(gui)
+
+@skills.command()
+def recommend_utterance_transformers():
+    """recommend Utterance Transformers config """
+    from ovos_plugin_manager.text_transformers import find_utterance_transformer_plugins as finder
+    plugs = list(finder())
+    if not plugs:
+        click.echo("WARNING: No Utterance Transformers plugins installed!!!")
+    else:
+
+        click.echo("Available plugins:")
+        for p in plugs:
+            click.echo(f" - {p}")
+
+    for plug, info in UTTERANCE_INFO.items():
+        if plug in plugs:
+            click.echo(f"INFO: '{plug}' - {info}")
+
+    click.echo("Nothing to recommend")
+
+
+@skills.command()
+def recommend_metadata_transformers():
+    """recommend Metadata Transformers config """
+    from ovos_plugin_manager.metadata_transformers import find_metadata_transformer_plugins as finder
+    plugs = list(finder())
+    if not plugs:
+        click.echo("WARNING: No Metadata Transformers plugins installed!!!")
+    else:
+        click.echo("Available plugins:")
+        for p in plugs:
+            click.echo(f" - {p}")
+
+    for plug, info in METADATA_INFO.items():
+        if plug in plugs:
+            click.echo(f"INFO: '{plug}' - {info}")
+
+    click.echo("Nothing to recommend")
+
+
+@listener.command()
+def recommend_stt():
+    """recommend STT config """
+    from ovos_plugin_manager.stt import find_stt_plugins as finder
+    plugs = list(finder())
+    if not plugs:
+        click.echo("WARNING: No STT plugins installed!!!")
+    else:
+
+        good4whisper = not IS_RPI and HAS_GPU
+
+        click.echo("Available plugins:")
+        for p in plugs:
+            click.echo(f" - {p}")
+        online_plugs = [
+            "ovos-stt-plugin-chromium",
+            "ovos-stt-plugin-server",
+            "ovos-stt-plugin-azure"
+        ]
+        offline_plugs = [
+            "ovos-stt-plugin-fasterwhisper",
+            "ovos-stt-plugin-vosk"
+        ]
+        # determine best online
+        best_online = None
+        online_plugs = [p for p in online_plugs if p in plugs]
+        online_recommendation = f"not sure what to recommend"
+        if online_plugs:
+            best_online = online_plugs[0]
+            if "ovos-stt-plugin-chromium" in online_plugs:
+                best_online = "ovos-stt-plugin-chromium"
+                online_recommendation = "multilingual, free, unmatched performance, but does not respect your privacy"
+            elif "ovos-stt-plugin-server" in online_plugs:
+                best_online = "ovos-stt-plugin-server"
+                online_recommendation = "multilingual, variable performance, self hosted, community maintained public servers"
+            elif "ovos-stt-plugin-azure" in online_plugs:
+                best_online = "ovos-stt-plugin-azure"
+                online_recommendation = "multilingual, fast and accurate, but requires api key"
+            elif len(online_plugs) == 1:
+                online_recommendation = "only available remote plugin"
+            else:
+                online_recommendation = f"random selection"
+
+        # determine best offline
+        best_offline = None
+        offline_recommendation = f"not sure what to recommend"
+        offline_plugs = [p for p in offline_plugs if p in plugs]
+        if offline_plugs:
+            best_offline = offline_plugs[0]
+            if IS_RPI and "ovos-stt-plugin-vosk" in plugs:
+                best_offline = "ovos-stt-plugin-vosk"
+                offline_recommendation = "raspberry pi has limited options"
+            elif good4whisper and "ovos-stt-plugin-fasterwhisper" in plugs:
+                best_offline = "ovos-stt-plugin-fasterwhisper"
+                offline_recommendation = "multilingual, GPU allows fast inference"
+                # TODO - check if model is downloaded / lang supported
+            elif "ovos-stt-plugin-vosk" in plugs:
+                best_offline = "ovos-stt-plugin-vosk"
+                offline_recommendation = "lightweight, but not very accurate"
+                # TODO - check if model is downloaded / lang supported
+            elif len(offline_plugs) == 1:
+                offline_recommendation = "only available offline plugin"
+            else:
+                offline_recommendation = f"random selection"
+
+        # recommend main and fallback plugins
+        best_fallback = None
+        main_recommendation = f"not sure what to recommend"
+        fallback_recommendation = f"not sure what to recommend"
+        best = plugs[0]
+        if best_offline and best_online:
+            if IS_RPI:
+                best = best_online
+                main_recommendation = "recommended online plugin"
+                fallback_recommendation = f"disable fallback STT, limited resources available"
+            elif HAS_GPU and best_offline == "ovos-stt-plugin-fasterwhisper":
+                best = best_offline
+                main_recommendation = "multilingual, GPU allows fast inference, maximum privacy"
+                if "ovos-stt-plugin-vosk" in offline_plugs:
+                    best_fallback = "ovos-stt-plugin-vosk"
+                    fallback_recommendation = "handle failures in main plugin"
+                else:
+                    fallback_recommendation = "disable fallback STT, do not reach out to the internet"
+            else:
+                best = best_online
+                best_fallback = best_offline
+                main_recommendation = "recommended online plugin, for best latency"
+                fallback_recommendation = f"recommended offline plugin, handle internet outages"
+        elif best_offline:
+            best = best_offline
+            main_recommendation = "recommended offline plugin"
+            fallback_recommendation = "disable fallback STT, no remote plugins available"
+        elif best_online:
+            best = best_online
+            main_recommendation = "recommended online plugin"
+            if len(online_plugs) > 1:
+                # select second best online
+                if best_online != "ovos-stt-plugin-server" and "ovos-stt-plugin-server" in online_plugs:
+                    best_fallback = "ovos-stt-plugin-server"
+                else:
+                    best_fallback = [p for p in online_plugs if p != best_online][0]
+                fallback_recommendation = f"handle failures of main plugin"
+        elif len(plugs) == 1:
+            best_fallback = "disable fallback STT"
+            main_recommendation = "only installed plugin"
+            fallback_recommendation = f"needs at least 2 plugins to use fallback"
+
+        click.echo(f"OFFLINE RECOMMENDATION: {best_offline} - {offline_recommendation}")
+        click.echo(f"ONLINE RECOMMENDATION: {best_online} - {online_recommendation}")
+
+        click.echo(f"STT RECOMMENDATION: {best} - {main_recommendation}")
+        click.echo(f"FALLBACK STT RECOMMENDATION: {best_fallback} - {fallback_recommendation}")
+
+
+@listener.command()
+def recommend_vad():
+    """recommend VAD config """
+    click.echo("VAD plugin recommendations:")
+    from ovos_plugin_manager.vad import find_vad_plugins as finder
+    plugs = list(finder())
+    if not plugs:
+        click.echo("WARNING: No VAD plugins installed!!!")
+    else:
+        click.echo("Available plugins:")
+        for p in plugs:
+            click.echo(f" - {p}")
+        if "ovos-vad-plugin-silero" in plugs:
+            recommendation = "'ovos-vad-plugin-silero' - best accuracy, lightweight"
+        # TODO - uncomment once the plugin gets some QA
+        # elif "ovos-vad-plugin-webrtcvad" in plugs:
+        #    recommendation = "'ovos-vad-plugin-webrtcvad' - medium accuracy, lightweight, configurable"
+        elif "ovos-vad-plugin-noise" in plugs:
+            recommendation = "'ovos-vad-plugin-noise' - worst accuracy, lightweight, no external dependencies, configurable"
+        elif len(plugs) == 1:
+            recommendation = f"'{plugs[0]}' - only installed plugin"
+        else:
+            recommendation = f"not sure what to recommend"
+        click.echo(f"RECOMMENDATION: {recommendation}")
+
+
+@listener.command()
+def recommend_microphone():
+    """recommend Microphone config """
+    click.echo("Microphone plugin recommendations:")
+    from ovos_plugin_manager.microphone import find_microphone_plugins as finder
+    plugs = list(finder())
+    if not plugs:
+        click.echo("WARNING: No microphone plugins installed!!!")
+    else:
+        click.echo("Available plugins:")
+        for p in plugs:
+            click.echo(f" - {p}")
+        is_alsa_compatible = platform.system() == "Linux"
+        if is_alsa_compatible and "ovos-microphone-plugin-alsa" in plugs:
+            recommendation = "'ovos-microphone-plugin-alsa' - low audio latency"
+        elif "ovos-microphone-plugin-sounddevice" in plugs:
+            recommendation = "'ovos-microphone-plugin-sounddevice' - multi-platform"
+        elif "ovos-microphone-plugin-pyaudio" in plugs:
+            recommendation = "'ovos-microphone-plugin-pyaudio' - multi-platform"
+        elif len(plugs) == 1:
+            recommendation = f"'{plugs[0]}' - only installed plugin"
+        else:
+            recommendation = f"not sure what to recommend"
+        click.echo(f"RECOMMENDATION: {recommendation}")
+
+
+@phal.command()
+def recommend_platform():
+    """recommend platform specific plugins"""
+    from ovos_plugin_manager.phal import find_phal_plugins as finder
+    plugs = list(finder())
+
+    click.echo("Listing installed plugins...")
+    for idx, plugin in enumerate(plugs):
+        click.echo(f" {idx} - {plugin}")
+
+    for plug, rec in PHAL_ESSENTIAL.items():
+        if plug not in plugs:
+            click.echo(f"RECOMMENDED PHAL PLUGIN: '{plug}' - {rec}")
+
+    if not HAS_GPU:
+        for p in GPU_ONLY_PHAL:
+            if p in plugs:
+                click.echo(f"UNINSTALL: '{p}', it requires a GPU")
+
+    if IS_RPI:
+        for plug, rec in PHAL_RPI_ESSENTIAL.items():
+            if plug not in plugs:
+                click.echo(f"RECOMMENDED PHAL PLUGIN: '{plug}' - {rec}")
+    else:
+        for p in RPI_ONLY_PHAL:
+            if p in plugs:
+                click.echo(f"UNINSTALL: '{p}', it is for raspberry pi only")
+
+    if IS_LINUX:
+        for plug, rec in PHAL_LINUX_ESSENTIAL.items():
+            if plug not in plugs:
+                click.echo(f"RECOMMENDED PHAL PLUGIN: '{plug}' - {rec}")
+    else:
+        for p in LINUX_ONLY_PHAL:
+            if p in plugs:
+                click.echo(f"UNINSTALL: '{p}', it is for Linux only")
+
+    if IS_MK_1:
+        for plug, rec in PHAL_MK1_ESSENTIAL.items():
+            if plug not in plugs:
+                click.echo(f"RECOMMENDED PHAL PLUGIN: '{plug}' - {rec}")
+    else:
+        for p in MK1_ONLY_PHAL:
+            if p in plugs:
+                click.echo(f"UNINSTALL: '{p}', it is for Mark1 only")
+
+    if IS_MK_2:
+        for plug, rec in PHAL_MK2_ESSENTIAL.items():
+            if plug not in plugs:
+                click.echo(f"RECOMMENDED PHAL PLUGIN: '{plug}' - {rec}")
+    else:
+        for p in MK2_ONLY_PHAL:
+            if p in plugs:
+                click.echo(f"UNINSTALL: '{p}', it is for Mark2 only")
+
+    if IS_MK_2_DEVKIT:
+        for plug, rec in PHAL_MK2DEV_ESSENTIAL.items():
+            if plug not in plugs:
+                click.echo(f"RECOMMENDED PHAL PLUGIN: '{plug}' - {rec}")
+    else:
+        for p in MK2DEV_ONLY_PHAL:
+            if p in plugs:
+                click.echo(f"UNINSTALL: '{p}', it is for Mark2 DevKit only")
+
 
 #######################################################
 # Recommendations are defined here, manually maintained
-
+METADATA_INFO = {}
+UTTERANCE_INFO = {
+    "ovos-utterance-plugin-cancel": "can cancel utterances on false activations or when you change your mind mid sentence",
+    "ovos-utterance-corrections-plugin": " allows you to manually correct common STT mistakes",
+    "ovos-utterance-translation-plugin": "works together with 'ovos-dialog-translation-plugin' providing bidirectional translation for utterances in unsupported languages, very useful for chat inputs"
+}
 PHAL_ESSENTIAL = {
     "ovos-phal-plugin-connectivity-events": "improves reaction to network state changes",
     "ovos-phal-plugin-ipgeo": "ensures approximate location and timezone until users configure it",
@@ -1149,12 +1435,8 @@ RPI_ONLY_PHAL = [
     "ovos-PHAL-plugin-dotstar"
 ]
 MK1_ONLY_PHAL = ["ovos-phal-mk1"]
-MK2_ONLY_PHAL = [
-    "ovos-PHAL-plugin-gui-network-client"
-]
-MK2DEV_ONLY_PHAL = [
-    "ovos-PHAL-plugin-mk2-v6-fan-control"
-]
+MK2_ONLY_PHAL = ["ovos-PHAL-plugin-gui-network-client"]
+MK2DEV_ONLY_PHAL = [ "ovos-PHAL-plugin-mk2-v6-fan-control"]
 
 LINUX_ONLY_SKILLS = ["ovos-skill-application-launcher.openvoiceos"]
 GPU_ONLY_SKILLS = []
