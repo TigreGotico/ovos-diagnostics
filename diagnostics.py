@@ -1106,59 +1106,58 @@ def recommend_platform():
 
 #######################################################
 # Recommendations are defined here, manually maintained
-# TODO - filter by supported langs
+
 TTS_RPI_BLACKLIST = []
 TTS_ONLINE_PREFS = [
-    ("ovos-tts-plugin-edge-tts", "multilingual, fast, high quality, no api key required"),
-    ("ovos-tts-plugin-server", "self hosted, community maintained public servers (piper)"),
-    ("ovos-tts-plugin-google-tx", "extensive language support, free, single voice"),
-    ("ovos-tts-plugin-polly", "fast and accurate, but requires api key"),
-    ("ovos-tts-plugin-azure", "fast and accurate, but requires api key"),
-    ("ovos-tts-plugin-mimic3",
-     "self hosted, models available for several languages, abandoned project, precursor to piper"),
-    ("neon-tts-plugin-larynx-server",
-     "self hosted, models available for several languages, abandoned project, precursor to mimic3"),
-    ("ovos-tts-plugin-marytts",
-     "self hosted, models available for several languages, many projects offer compatible apis")
+    ("ovos-tts-plugin-edge-tts", "multilingual, fast, high quality, no api key required"), # TODO - filter by supported langs
+    ("ovos-tts-plugin-server", "self hosted, community maintained public servers (piper)"), # TODO - filter by supported langs
+    ("ovos-tts-plugin-google-tx", "extensive language support, free, single voice"), # TODO - filter by supported langs
+    ("ovos-tts-plugin-polly", "fast and accurate, but requires api key"), # TODO - filter by supported langs
+    ("ovos-tts-plugin-azure", "fast and accurate, but requires api key"), # TODO - filter by supported langs
+    ("ovos-tts-plugin-mimic3",  "self hosted, models available for several languages, abandoned project, precursor to piper"), # TODO - filter by supported langs
+    ("neon-tts-plugin-larynx-server",  "self hosted, models available for several languages, abandoned project, precursor to mimic3"), # TODO - filter by supported langs
+    ("ovos-tts-plugin-marytts", "self hosted, models available for several languages, many projects offer compatible apis") # TODO - filter by supported langs
 ]
 TTS_OFFLINE_PREFS = [
-    ("ovos-tts-plugin-piper", "lightweight, models available for several languages"),
-    ("ovos-tts-plugin-mimic3",
-     "lightweight, models available for several languages, abandoned project, precursor to piper"),
-    ("ovos-tts-plugin-mimic", "lightweight, sounds robotic, english only"),
-    ("ovos-tts-plugin-pico", "very lightweight, limited language support"),
-    ("ovos-tts-plugin-espeakng", "very lightweight, sounds robotic, extensive language support")
+    ("ovos-tts-plugin-piper", "lightweight, models available for several languages"), # TODO - filter by supported langs
+    ("ovos-tts-plugin-mimic3", "lightweight, models available for several languages, abandoned project, precursor to piper"), # TODO - filter by supported langs
+    ("ovos-tts-plugin-mimic", "lightweight, sounds robotic, english only") 
+    if LANG.startswith("en") else ("", ""),
+    ("ovos-tts-plugin-pico", "very lightweight, limited language support") 
+    if any([LANG.startswith(l) for l in ["de", "es", "fr", "it", "en"]]) else ("", ""),
+    ("ovos-tts-plugin-espeakng", "very lightweight, sounds robotic, extensive language support"), # TODO - filter by supported langs
+    ("ovos-tts-plugin-SAM", "TTS from the 80s, VERY robotic, english only") 
+    if LANG.startswith("en") else ("", ""),
+    ("ovos-tts-plugin-beepspeak", "robot beeps, for fun and testing only") 
 ]
-if not LANG.startswith("en"):
-    TTS_OFFLINE_PREFS.pop(2)  # mimic 1 is english only
+
 
 STT_RPI_BLACKLIST = ["ovos-stt-plugin-fasterwhisper", "neon-stt-plugin-nemo"]
 STT_ONLINE_PREFS = [
-    ("ovos-stt-plugin-chromium", "multilingual, free, unmatched performance, but does not respect your privacy"),
-    ("ovos-stt-plugin-server",
-     "multilingual, variable performance, self hosted, community maintained public  (fasterwhisper)"),
-    ("ovos-stt-plugin-azure", "multilingual, fast and accurate, but requires api key")
+    ("ovos-stt-plugin-chromium", "multilingual, free, unmatched performance, but does not respect your privacy"),# TODO - filter by supported langs
+    ("ovos-stt-plugin-server", "multilingual, variable performance, self hosted, community maintained public  (fasterwhisper)"),# TODO - filter by supported langs
+    ("ovos-stt-plugin-azure", "multilingual, fast and accurate, but requires api key") # TODO - filter by supported langs 
 ]
 if not HAS_GPU:
     STT_OFFLINE_PREFS = [
-        ("neon-stt-plugin-nemo", "monolingual models, medium accuracy"),
-        ("ovos-stt-plugin-fasterwhisper", "multilingual, slow without a GPU"),
-        ("ovos-stt-plugin-vosk", "monolingual models, not very accurate, lightweight, suitable for raspberry pi"),
-        ("ovos-stt-plugin-pocketsphinx", "worst accuracy, only use as last resort"),
+        ("neon-stt-plugin-nemo", "monolingual models, medium accuracy"), # TODO - filter by supported langs
+        ("ovos-stt-plugin-fasterwhisper", "multilingual, slow without a GPU"), # TODO - filter by supported langs
+        ("ovos-stt-plugin-vosk", "monolingual models, not very accurate, lightweight, suitable for raspberry pi"), # TODO - filter by supported langs
+        ("ovos-stt-plugin-pocketsphinx", "worst accuracy, only use as last resort"), # TODO - filter by supported langs
     ]
 else:
     STT_OFFLINE_PREFS = [
-        ("ovos-stt-plugin-fasterwhisper", "multilingual, GPU allows fast inference"),
-        ("neon-stt-plugin-nemo", "monolingual models, medium accuracy"),
-        ("ovos-stt-plugin-vosk", "monolingual models, not very accurate, lightweight, suitable for raspberry pi"),
-        ("ovos-stt-plugin-pocketsphinx", "worst accuracy, only use as last resort")
+        ("ovos-stt-plugin-fasterwhisper", "multilingual, GPU allows fast inference"), # TODO - filter by supported langs
+        ("neon-stt-plugin-nemo", "monolingual models, medium accuracy"), # TODO - filter by supported langs
+        ("ovos-stt-plugin-vosk", "monolingual models, not very accurate, lightweight, suitable for raspberry pi"), # TODO - filter by supported langs
+        ("ovos-stt-plugin-pocketsphinx", "worst accuracy, only use as last resort") # TODO - filter by supported langs
     ]
 
 RERANKER_RPI_BLACKLIST = ["ovos-flashrank-reranker-plugin"]
 RERANKER_PREFS = [
-    ("ovos-flashrank-reranker-plugin", "best, lightweight and fast"),
-    ("ovos-bm25-reranker-plugin", "lightweight and fast, based on text similarity"),
-    ("ovos-choice-solver-bm25", "no extra dependencies, comes from 'ovos-classifiers'")
+    ("ovos-flashrank-reranker-plugin", "best, lightweight and fast"), # TODO - filter by supported langs
+    ("ovos-bm25-reranker-plugin", "lightweight and fast, based on text similarity"), # TODO - filter by supported langs
+    ("ovos-choice-solver-bm25", "no extra dependencies, comes from 'ovos-classifiers'") # TODO - filter by supported langs
 ]
 VAD_RPI_BLACKLIST = []
 VAD_PREFS = [
