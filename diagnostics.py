@@ -1,13 +1,17 @@
+import importlib
 import json
 import os
 import platform
 
 import click
+from mycroft.skills.common_play_skill import CommonPlaySkill
 from ovos_backend_client.database import OAuthTokenDatabase
 from ovos_config import Configuration
 from ovos_config.locations import get_xdg_config_save_path
+from ovos_plugin_manager.skills import find_skill_plugins
 from ovos_utils.gui import is_installed
 from ovos_utils.log import LOG
+from ovos_workshop.skills.common_play import OVOSCommonPlaybackSkill
 
 CONFIG = Configuration()
 
@@ -637,11 +641,33 @@ def recommend_tts_transformers():
 @skills.command()
 def recommend_pipeline():
     """recommend Pipeline config """
-    try:
-        import padatious
-        click.echo("Nothing to recommend")  # TODO
-    except ImportError:
-        click.echo("WARNING: 'padatious' is not installed, intent matching will be much slower when using 'padacioso'")
+    PIPELINE = CONFIG.get("intents", {}).get("pipeline", [])
+    HAS_OCP_SKILLS = any([issubclass(plug, OVOSCommonPlaybackSkill)
+                          for plug in find_skill_plugins().values()]) or True
+    HAS_LEGACY_OCP_SKILLS = any([issubclass(plug, CommonPlaySkill)
+                                 for plug in find_skill_plugins().values()])
+    OCP_IN_PIPELINE = any([p.startswith("ocp_") for p in PIPELINE if p != "ocp_legacy"])
+    PADATIOUS_IN_PIPELINE = any([p.startswith("padatious_") for p in PIPELINE])
+    PADACIOSO_IN_PIPELINE = any([p.startswith("padacioso_") for p in PIPELINE])
+    LEGACY_OCP_IN_PIPELINE = "ocp_legacy" in PIPELINE
+
+    if PADATIOUS_IN_PIPELINE:
+        if not importlib.util.find_spec("padatious"):
+            click.echo(
+                "WARNING: 'padatious' is not installed, intent matching will be much slower via 'padacioso' fallback")
+    if PADACIOSO_IN_PIPELINE:
+        click.echo("WARNING: 'padacioso' is enabled in pipeline config, expect latency in intent matching")
+
+    if HAS_OCP_SKILLS and not OCP_IN_PIPELINE:
+        click.echo(
+            "WARNING: OCP Skills detected, but OCP not in 'pipeline' config, add 'ocp_high' to your mycroft.conf to enable media queries")
+
+    if HAS_LEGACY_OCP_SKILLS and not LEGACY_OCP_IN_PIPELINE:
+        click.echo(
+            "ERROR: Deprecated Mycroft CommonPlay skills detected, you need to add 'ocp_legacy' to your 'pipeline' config in mycroft.conf")
+    elif not HAS_LEGACY_OCP_SKILLS and LEGACY_OCP_IN_PIPELINE:
+        click.echo(
+            "WARNING: your pipeline contains 'ocp_legacy', but no Mycroft CommonPlay skills installed, expect latency in intent matching")
 
 
 @skills.command()
