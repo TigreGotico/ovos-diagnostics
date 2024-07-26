@@ -50,7 +50,7 @@ def is_gpu_available():
 
 ###################################3
 # Platform Info
-LANG = CONFIG.get("lang")
+LANG = CONFIG.get("lang", "en-us").lower()
 HOMESCREEN_ID = CONFIG.get("gui", {}).get("idle_display_skill")
 HAS_SHELL = is_installed('ovos-shell')
 HAS_GUI = is_installed('ovos-shell') or is_installed('ovos-gui-app') or is_installed('mycroft-gui-app')
@@ -1192,29 +1192,29 @@ PIPER_LANGS = ["ar", "ca", "cs", "da", "de", "el", "en", "es", "fi", "fr", "hu",
 TTS_RPI_BLACKLIST = []
 TTS_ONLINE_PREFS = [
     ("ovos-tts-plugin-edge-tts", "multilingual, fast, high quality, no api key required")
-    if any([LANG.startswith(l) for l in EDGE_LANGS]) else ("", ""),
+    if any([LANG.startswith(l.lower()) for l in EDGE_LANGS]) else ("", ""),
     ("ovos-tts-plugin-server", "self hosted, community maintained public servers (piper)")
-    if any([LANG.startswith(l) for l in PIPER_LANGS]) else ("", ""),
+    if any([LANG.startswith(l.lower()) for l in PIPER_LANGS]) else ("", ""),
     ("ovos-tts-plugin-google-tx", "extensive language support, free, single voice")
-    if any([LANG.startswith(l) for l in GTTS_LANGS]) else ("", ""),
+    if any([LANG.startswith(l.lower()) for l in GTTS_LANGS]) else ("", ""),
     ("ovos-tts-plugin-azure", "supports many regional dialects, fast and accurate, but requires api key")
-    if any([LANG.startswith(l) for l in AZURE_LANGS]) else ("", ""),
+    if any([LANG.startswith(l.lower()) for l in AZURE_LANGS]) else ("", ""),
     ("ovos-tts-plugin-polly", "fast and accurate, but requires api key")
-    if any([LANG.startswith(l) for l in POLLY_LANGS]) else ("", ""),
+    if any([LANG.startswith(l.lower()) for l in POLLY_LANGS]) else ("", ""),
     ("neon-tts-plugin-larynx-server",  "self hosted, models available for several languages, abandoned project, precursor to mimic3")
-    if any([LANG.startswith(l) for l in LARYNX_LANGS]) else ("", ""),
+    if any([LANG.startswith(l.lower()) for l in LARYNX_LANGS]) else ("", ""),
     ("ovos-tts-plugin-marytts", "self hosted, models available for several languages, many projects offer compatible apis")
-    if any([LANG.startswith(l) for l in MARY_LANGS]) else ("", "")
+    if any([LANG.startswith(l.lower()) for l in MARY_LANGS]) else ("", "")
 ]
 TTS_OFFLINE_PREFS = [
     ("ovos-tts-plugin-piper", "lightweight, models available for several languages")
-    if any([LANG.startswith(l) for l in PIPER_LANGS]) else ("", ""),
+    if any([LANG.startswith(l.lower()) for l in PIPER_LANGS]) else ("", ""),
     ("ovos-tts-plugin-mimic3", "lightweight, models available for several languages, abandoned project, precursor to piper")
-    if any([LANG.startswith(l) for l in MIMIC3_LANGS]) else ("", ""),
+    if any([LANG.startswith(l.lower()) for l in MIMIC3_LANGS]) else ("", ""),
     ("ovos-tts-plugin-mimic", "lightweight, sounds robotic, english only")
     if LANG.startswith("en") else ("", ""),
     ("ovos-tts-plugin-pico", "very lightweight, limited language support")
-    if any([LANG.startswith(l) for l in PICO_LANGS]) else ("", ""),
+    if any([LANG.startswith(l.lower()) for l in PICO_LANGS]) else ("", ""),
     ("ovos-tts-plugin-espeakng", "very lightweight, sounds robotic, extensive language support"), # TODO - filter by supported langs
     ("ovos-tts-plugin-SAM", "TTS from the 80s, VERY robotic, english only")
     if LANG.startswith("en") else ("", ""),
@@ -1226,31 +1226,32 @@ CHROMIUM_LANGS = ['af-ZA', 'ar-DZ', 'bg-BG', 'ca-ES', 'cmn-Hans-CN', 'cs-CZ', 'd
 NEMO_STT_LANGS = ["en", "es", "fr", "de", "it", "uk", "nl", "pt", "ca"]
 WHISPER_LANGS = ['en', 'zh', 'de', 'es', 'ru', 'ko', 'fr', 'ja', 'pt', 'tr', 'pl', 'ca', 'nl', 'ar', 'sv', 'it', 'id', 'hi', 'fi', 'vi', 'iw', 'uk', 'el', 'ms', 'cs', 'ro', 'da', 'hu', 'ta', 'no', 'th', 'ur', 'hr', 'bg', 'lt', 'la', 'mi', 'ml', 'cy', 'sk', 'te', 'fa', 'lv', 'bn', 'sr', 'az', 'sl', 'kn', 'et', 'mk', 'br', 'eu', 'is', 'hy', 'ne', 'mn', 'bs', 'kk', 'sq', 'sw', 'gl', 'mr', 'pa', 'si', 'km', 'sn', 'yo', 'so', 'af', 'oc', 'ka', 'be', 'tg', 'sd', 'gu', 'am', 'yi', 'lo', 'uz', 'fo', 'ht', 'ps', 'tk', 'nn', 'mt', 'sa', 'lb', 'my', 'bo', 'tl', 'mg', 'as', 'tt', 'haw', 'ln', 'ha', 'ba', 'jw', 'su']
 STT_RPI_BLACKLIST = ["ovos-stt-plugin-fasterwhisper", "neon-stt-plugin-nemo"]
+CHROMIUM_LANGS = [l.split("-")[0] for l in CHROMIUM_LANGS]
 STT_ONLINE_PREFS = [
     ("ovos-stt-plugin-chromium", "multilingual, free, unmatched performance, but does not respect your privacy")
-    if any([LANG.startswith(l) for l in CHROMIUM_LANGS]) else ("", ""),
+    if any([LANG.startswith(l.lower()) for l in CHROMIUM_LANGS]) else ("", ""),
     ("ovos-stt-plugin-server", "multilingual, variable performance, self hosted, community maintained public  (fasterwhisper)")
-    if any([LANG.startswith(l) for l in WHISPER_LANGS]) else ("", ""),
+    if any([LANG.startswith(l.lower()) for l in WHISPER_LANGS]) else ("", ""),
     ("ovos-stt-plugin-azure", "multilingual, fast and accurate, but requires api key") # TODO - filter by supported langs
 ]
 if not HAS_GPU:
     STT_OFFLINE_PREFS = [
         ("neon-stt-plugin-nemo", "monolingual models, medium accuracy")
-        if any([LANG.startswith(l) for l in NEMO_STT_LANGS]) else ("", ""),
+        if any([LANG.startswith(l.lower()) for l in NEMO_STT_LANGS]) else ("", ""),
         ("ovos-stt-plugin-fasterwhisper", "multilingual, slow without a GPU")
-        if any([LANG.startswith(l) for l in WHISPER_LANGS]) else ("", ""),
+        if any([LANG.startswith(l.lower()) for l in WHISPER_LANGS]) else ("", ""),
         ("ovos-stt-plugin-vosk", "monolingual models, not very accurate, lightweight, suitable for raspberry pi")
-        if any([LANG.startswith(l) for l in VOSK_LANGS]) else ("", ""),
+        if any([LANG.startswith(l.lower()) for l in VOSK_LANGS]) else ("", ""),
         ("ovos-stt-plugin-pocketsphinx", "worst accuracy, only use as last resort"), # TODO - filter by supported langs
     ]
 else:
     STT_OFFLINE_PREFS = [
         ("ovos-stt-plugin-fasterwhisper", "multilingual, GPU allows fast inference")
-        if any([LANG.startswith(l) for l in WHISPER_LANGS]) else ("", ""),
+        if any([LANG.startswith(l.lower()) for l in WHISPER_LANGS]) else ("", ""),
         ("neon-stt-plugin-nemo", "monolingual models, medium accuracy")
-        if any([LANG.startswith(l) for l in NEMO_STT_LANGS]) else ("", ""),
+        if any([LANG.startswith(l.lower()) for l in NEMO_STT_LANGS]) else ("", ""),
         ("ovos-stt-plugin-vosk", "monolingual models, not very accurate, lightweight, suitable for raspberry pi")
-        if any([LANG.startswith(l) for l in VOSK_LANGS]) else ("", ""),
+        if any([LANG.startswith(l.lower()) for l in VOSK_LANGS]) else ("", ""),
         ("ovos-stt-plugin-pocketsphinx", "worst accuracy, only use as last resort") # TODO - filter by supported langs
     ]
 

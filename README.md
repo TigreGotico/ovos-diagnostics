@@ -1,5 +1,10 @@
+# OVOS Diagnostics Tool
+
+The OVOS Diagnostics Tool is a command-line interface (CLI) utility designed to manage and diagnose various plugins used in the Open Voice OS (OVOS) ecosystem. It provides functionalities to list, recommend, and manage plugins across different categories such as audio, skills, GUI, language, listener, and platform-specific plugins.
 
 ## Usage
+
+Once installed, you can use the `ovos-diagnostics` command to interact with the tool. The general syntax is:
 
 run `ovos-diagnostics`
 ```bash
@@ -130,3 +135,63 @@ Commands:
   recommend-extensions  GUI recommendations
   scan-extensions       List available VAD plugins
 ```
+
+## Examples
+
+### Listing Installed TTS Plugins
+
+To list all available TTS plugins, you can use the following command:
+
+```bash
+ovos-diagnostics audio scan-tts
+```
+example output
+```
+List of TTS Plugins
+ 0 - ovos-tts-plugin-mimic3
+ 1 - ovos-tts-plugin-beepspeak
+ 2 - ovos-tts-plugin-dummy
+ 3 - ovos-tts-plugin-SAM
+ 4 - ovos-tts-plugin-polly
+ 5 - ovos_tts_plugin_espeakng
+ 6 - ovos-tts-plugin-piper
+ 7 - ovos-tts-plugin-pico
+ 8 - ovos-tts-plugin-edge-tts
+ 9 - ovos-tts-plugin-azure
+ 10 - ovos-tts-plugin-server
+ 11 - ovos-tts-plugin-marytts
+ 12 - neon-tts-plugin-larynx-server
+ 13 - ovos-tts-plugin-mimic
+ 14 - ovos-tts-plugin-google-tx
+```
+
+> NOTE: if a plugin is installed but doesnt show up here, then ovos-plugin-manager is failing to load it
+
+
+### Recommending an STT Configuration
+
+To get recommendations for the best STT configuration based on your platform, use:
+
+```bash
+ovos-diagnostics listener recommend-stt
+```
+
+example output
+```
+Available plugins:
+ - ovos-stt-plugin-dummy
+ - ovos-stt-plugin-azure
+ - ovos-stt-plugin-vosk
+ - ovos-stt-plugin-vosk-streaming
+ - ovos-stt-plugin-chromium
+ - ovos-stt-plugin-fasterwhisper
+ - ovos-stt-plugin-server
+OFFLINE RECOMMENDATION: ovos-stt-plugin-fasterwhisper - multilingual, GPU allows fast inference
+ONLINE RECOMMENDATION: ovos-stt-plugin-server - multilingual, variable performance, self hosted, community maintained public  (fasterwhisper)
+STT RECOMMENDATION: ovos-stt-plugin-fasterwhisper - recommended offline plugin
+FALLBACK STT RECOMMENDATION: None - already offline, no need to reach out to the internet!
+```
+
+## License
+
+This project is licensed under the terms of the MIT license.
