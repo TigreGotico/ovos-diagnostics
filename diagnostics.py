@@ -430,139 +430,102 @@ def recommend_tts():
     if not plugs:
         click.echo("WARNING: No TTS plugins installed!!!")
     else:
-
-        # perform these checks
-
         click.echo("Available plugins:")
         for p in plugs:
             click.echo(f" - {p}")
-        online_plugs = [
-            "ovos-tts-plugin-marytts",
-            "ovos-tts-plugin-edge-tts",
-            "ovos-tts-plugin-server",
-            "ovos-tts-plugin-azure",
-            "ovos-tts-plugin-google-tx",
-            "neon-tts-plugin-larynx-server"
-        ]
-        offline_plugs = [
-            "ovos-tts-plugin-pico",
-            "ovos-tts-plugin-piper",
-            "ovos-tts-plugin-mimic",
-            "ovos-tts-plugin-mimic3",
-            "ovos_tts_plugin_espeakng",  # TODO standardize name upstream ('-' instead of '_')
-        ]
+
         # determine best online
+        online_plugs = [p for p, _ in TTS_ONLINE_PREFS if p in plugs]
+        if IS_RPI:
+            online_plugs = [p for p in online_plugs if p not in TTS_RPI_BLACKLIST]
         best_online = None
-        online_plugs = [p for p in online_plugs if p in plugs]
         online_recommendation = f"not sure what to recommend"
         if online_plugs:
-            best_online = online_plugs[0]
-            if "ovos-tts-plugin-edge-tts" in online_plugs:
-                best_online = "ovos-tts-plugin-edge-tts"
-                online_recommendation = "multilingual, fast, high quality, no api key required"
-            elif "ovos-tts-plugin-server" in online_plugs:
-                best_online = "ovos-tts-plugin-server"
-                online_recommendation = "variable performance, self hosted, community maintained public servers"
-            elif "ovos-tts-plugin-google-tx" in online_plugs:
-                best_online = "ovos-tts-plugin-google-tx"
-                online_recommendation = "extensive language support, free, single voice"
-            elif "ovos-tts-plugin-polly" in online_plugs:
-                best_online = "ovos-tts-plugin-polly"
-                online_recommendation = "fast and accurate, but requires api key"
-            elif "ovos-tts-plugin-azure" in online_plugs:
-                best_online = "ovos-tts-plugin-azure"
-                online_recommendation = "fast and accurate, but requires api key"
-            elif "ovos-tts-plugin-marytts" in online_plugs:
-                best_online = "ovos-tts-plugin-marytts"
-                online_recommendation = "self hosted, many projects offer compatible apis"
-            elif "neon-tts-plugin-larynx-server" in online_plugs:
-                best_online = "neon-tts-plugin-larynx-server"
-                online_recommendation = "self hosted, abandoned project, includes demo server"
-            elif len(online_plugs) == 1:
-                online_recommendation = "only available remote plugin"
+            for p, info in TTS_ONLINE_PREFS:
+                if p in online_plugs:
+                    best_online = p
+                    online_recommendation = info
+                    break
             else:
-                online_recommendation = f"random selection"
+                if len(online_plugs) == 1:
+                    best_online = online_plugs[0]
+                    online_recommendation = "only available remote plugin"
+                else:
+                    best_online = online_plugs[0]
+                    online_recommendation = f"random selection"
 
         # determine best offline
         best_offline = None
         offline_recommendation = f"not sure what to recommend"
-        offline_plugs = [p for p in offline_plugs if p in plugs]
+        offline_plugs = [p for p, _ in TTS_OFFLINE_PREFS if p in plugs]
+        if IS_RPI:
+            offline_plugs = [p for p in offline_plugs if p not in TTS_RPI_BLACKLIST]
+
         if offline_plugs:
-            best_offline = offline_plugs[0]
-            if IS_RPI and "ovos-tts-plugin-XXX" in plugs:
-                best_offline = "ovos-tts-plugin-XXX"
-                offline_recommendation = "raspberry pi has limited options"
-            elif HAS_GPU and "ovos-tts-plugin-XXX" in plugs:
-                best_offline = "ovos-stt-plugin-XXX"
-                offline_recommendation = "GPU allows fast inference"
-
-            elif "ovos-tts-plugin-piper" in plugs:
-                best_offline = "ovos-tts-plugin-piper"
-                offline_recommendation = "lightweight, several languages supported"
-            elif "ovos-tts-plugin-mimic3" in plugs:
-                best_offline = "ovos-tts-plugin-mimic3"
-                offline_recommendation = "lightweight, several languages supported, but abandoned and replaced by piper"
-            elif "ovos-tts-plugin-mimic" in plugs:
-                best_offline = "ovos-tts-plugin-mimic"
-                offline_recommendation = "lightweight, sounds robotic, english only"
-            elif "ovos-tts-plugin-pico" in plugs:
-                best_offline = "ovos-tts-plugin-pico"
-                offline_recommendation = "very lightweight, limited language support"
-            elif "ovos-tts-plugin-espeakng" in plugs:
-                best_offline = "ovos-tts-plugin-espeakng"
-                offline_recommendation = "very lightweight, sounds robotic, extensive language support"
-            elif len(offline_plugs) == 1:
-                offline_recommendation = "only available offline plugin"
+            for p, info in TTS_OFFLINE_PREFS:
+                if p in offline_plugs:
+                    best_offline = p
+                    offline_recommendation = info
+                    break
             else:
-                offline_recommendation = f"random selection"
-
-        # recommend main and fallback plugins
-        best_fallback = None
-        main_recommendation = f"not sure what to recommend"
-        fallback_recommendation = f"not sure what to recommend"
-        best = plugs[0]
-        if best_offline and best_online:
-            if IS_RPI:
-                best = best_online
-                main_recommendation = "recommended online plugin"
-                fallback_recommendation = f"disable fallback STT, limited resources available"
-            elif HAS_GPU and best_offline == "XXX":
-                best = best_offline
-                main_recommendation = "GPU allows fast inference, maximum privacy"
-                if "XXX" in offline_plugs:
-                    best_fallback = "XXX"
-                    fallback_recommendation = "handle failures in main plugin"
+                best_offline = offline_plugs[0]
+                if len(offline_plugs) == 1:
+                    offline_recommendation = "only available offline plugin"
                 else:
-                    fallback_recommendation = "disable fallback TTS, do not reach out to the internet"
-            else:
-                best = best_online
-                best_fallback = best_offline
-                main_recommendation = "recommended online plugin, for best latency"
-                fallback_recommendation = f"recommended offline plugin, handle internet outages"
-        elif best_offline:
-            best = best_offline
-            main_recommendation = "recommended offline plugin"
-            fallback_recommendation = "disable fallback TTS, no remote plugins available"
-        elif best_online:
-            best = best_online
-            main_recommendation = "recommended online plugin"
-            if len(online_plugs) > 1:
-                # select second best online
-                if best_online != "ovos-tts-plugin-server" and "ovos-tts-plugin-server" in online_plugs:
-                    best_fallback = "ovos-tts-plugin-server"
-                else:
-                    best_fallback = [p for p in online_plugs if p != best_online][0]
-                fallback_recommendation = f"handle failures of main plugin"
-        elif len(plugs) == 1:
-            best_fallback = "disable fallback TTS"
-            main_recommendation = "only installed plugin"
-            fallback_recommendation = f"needs at least 2 plugins to use fallback"
+                    offline_recommendation = f"random selection"
 
         click.echo(f"OFFLINE RECOMMENDATION: {best_offline} - {offline_recommendation}")
         click.echo(f"ONLINE RECOMMENDATION: {best_online} - {online_recommendation}")
 
-        click.echo(f"TTS RECOMMENDATION: {best} - {main_recommendation}")
-        click.echo(f"FALLBACK TTS RECOMMENDATION: {best_fallback} - {fallback_recommendation}")
+        if IS_RPI:
+            # prefer online
+            if best_online:
+                best = best_online
+                click.echo(f"TTS RECOMMENDATION: {best} - recommended online plugin, for optimal latency")
+                if best_offline:
+                    click.echo(
+                        f"FALLBACK TTS RECOMMENDATION: {best_offline} - best offline plugin, to handle internet outages")
+                elif len(online_plugs) > 1:
+                    best_fallback = [p for p in online_plugs if p != best_online][0]
+                    click.echo(
+                        f"FALLBACK TTS RECOMMENDATION: {best_fallback} - second best online plugin, no offline TTS available")
+                else:
+                    click.echo(f"FALLBACK TTS RECOMMENDATION: None - main TTS is already offline")
+            elif best_offline:  # no online
+                best = best_offline
+                click.echo(f"TTS RECOMMENDATION: {best} - recommended offline plugin")
+                click.echo(
+                    f"FALLBACK TTS RECOMMENDATION: None - Raspberry Pi has limited resources, avoid loading extra plugins")
+            elif len(plugs) == 1:
+                click.echo(f"TTS RECOMMENDATION: {plugs[0]} - only installed plugin")
+                click.echo(f"FALLBACK TTS RECOMMENDATION: None - no extra plugins detected")
+            else:
+                click.echo(
+                    f"TTS RECOMMENDATION: None - no suitable plugins detected, consider installing 'ovos-tts-plugin-server'")
+                click.echo(
+                    f"FALLBACK TTS RECOMMENDATION: None - Raspberry Pi has limited resources, avoid loading extra plugins")
+        else:
+            # prefer offline
+            if best_offline:
+                best = best_offline
+                click.echo(f"TTS RECOMMENDATION: {best} - recommended offline plugin, for maximum privacy")
+                click.echo(f"FALLBACK TTS RECOMMENDATION: None - main TTS is already offline")
+            elif best_online:  # no offline plugins available
+                best = best_online
+                click.echo(f"TTS RECOMMENDATION: {best} - recommended online plugin")
+                if len(online_plugs) > 1:  # 2 online plugins
+                    best_fallback = [p for p in online_plugs if p != best_online][0]
+                    click.echo(
+                        f"FALLBACK TTS RECOMMENDATION: {best_fallback} - second best online plugin, in case the first fails")
+                else:
+                    click.echo(f"FALLBACK TTS RECOMMENDATION: None - no suitable plugins detected")
+            elif len(plugs) == 1:
+                click.echo(f"TTS RECOMMENDATION: {plugs[0]} - only installed plugin")
+                click.echo(f"FALLBACK TTS RECOMMENDATION: None - no extra plugins detected")
+            else:
+                click.echo(
+                    f"TTS RECOMMENDATION: None - no suitable plugins detected, consider installing 'ovos-tts-plugin-piper'")
+                click.echo(f"FALLBACK TTS RECOMMENDATION: None - no suitable plugins detected")
 
 
 @audio.command()
@@ -894,7 +857,8 @@ def recommend_stt():
                 click.echo(f"STT RECOMMENDATION: {best} - recommended online plugin")
                 if len(online_plugs) > 1:  # 2 online plugins
                     best_fallback = [p for p in online_plugs if p != best_online][0]
-                    click.echo(f"FALLBACK STT RECOMMENDATION: {best_fallback} - second best online plugin, Raspberry Pi is not suited for offline STT")
+                    click.echo(
+                        f"FALLBACK STT RECOMMENDATION: {best_fallback} - second best online plugin, Raspberry Pi is not suited for offline STT")
                 else:
                     click.echo(f"FALLBACK STT RECOMMENDATION: None - Raspberry Pi is not suited for offline STT")
             elif best_offline:
@@ -905,7 +869,8 @@ def recommend_stt():
                 click.echo(f"STT RECOMMENDATION: {plugs[0]} - only installed plugin")
                 click.echo(f"FALLBACK STT RECOMMENDATION: None - no extra plugins detected")
             else:
-                click.echo(f"STT RECOMMENDATION: None - no suitable plugins detected, consider installing 'ovos-stt-plugin-server'")
+                click.echo(
+                    f"STT RECOMMENDATION: None - no suitable plugins detected, consider installing 'ovos-stt-plugin-server'")
                 click.echo(f"FALLBACK STT RECOMMENDATION: None - Raspberry Pi is not suited for offline STT")
         elif HAS_GPU:
             if best_offline:
@@ -917,21 +882,24 @@ def recommend_stt():
                 click.echo(f"STT RECOMMENDATION: {best} - recommended online plugin")
                 if len(online_plugs) > 1:  # 2 online plugins
                     best_fallback = [p for p in online_plugs if p != best_online][0]
-                    click.echo(f"FALLBACK STT RECOMMENDATION: {best_fallback} - second best online plugin, in case the first fails")
+                    click.echo(
+                        f"FALLBACK STT RECOMMENDATION: {best_fallback} - second best online plugin, in case the first fails")
                 else:
                     click.echo(f"FALLBACK STT RECOMMENDATION: None - no suitable plugins detected")
             elif len(plugs) == 1:
                 click.echo(f"STT RECOMMENDATION: {plugs[0]} - only installed plugin")
                 click.echo(f"FALLBACK STT RECOMMENDATION: None - no extra plugins detected")
             else:
-                click.echo(f"STT RECOMMENDATION: None - no suitable plugins detected, consider installing 'ovos-stt-plugin-fasterwhisper'")
+                click.echo(
+                    f"STT RECOMMENDATION: None - no suitable plugins detected, consider installing 'ovos-stt-plugin-fasterwhisper'")
                 click.echo(f"FALLBACK STT RECOMMENDATION: None - no suitable plugins detected")
         else:
             if best_online:
                 best = best_online
                 click.echo(f"STT RECOMMENDATION: {best} - recommended online plugin")
                 if best_offline:
-                    click.echo(f"FALLBACK STT RECOMMENDATION: {best_offline} - recommended offline plugin, handle internet outages")
+                    click.echo(
+                        f"FALLBACK STT RECOMMENDATION: {best_offline} - recommended offline plugin, handle internet outages")
                 elif len(online_plugs) > 1:
                     best_fallback = [p for p in online_plugs if p != best_online][0]
                     click.echo(f"FALLBACK STT RECOMMENDATION: {best_fallback} - second best online plugin")
@@ -949,7 +917,8 @@ def recommend_stt():
                 click.echo(f"STT RECOMMENDATION: {plugs[0]} - only installed plugin")
                 click.echo(f"FALLBACK STT RECOMMENDATION: None - no extra plugins detected")
             else:
-                click.echo(f"STT RECOMMENDATION: None - no suitable plugins detected, consider installing 'ovos-stt-plugin-server'")
+                click.echo(
+                    f"STT RECOMMENDATION: None - no suitable plugins detected, consider installing 'ovos-stt-plugin-server'")
                 click.echo(f"FALLBACK STT RECOMMENDATION: None - no suitable plugins detected")
 
 
@@ -1111,10 +1080,37 @@ def recommend_platform():
 
 #######################################################
 # Recommendations are defined here, manually maintained
+# TODO - filter by supported langs
+TTS_RPI_BLACKLIST = []
+TTS_ONLINE_PREFS = [
+    ("ovos-tts-plugin-edge-tts", "multilingual, fast, high quality, no api key required"),
+    ("ovos-tts-plugin-server", "self hosted, community maintained public servers (piper)"),
+    ("ovos-tts-plugin-google-tx", "extensive language support, free, single voice"),
+    ("ovos-tts-plugin-polly", "fast and accurate, but requires api key"),
+    ("ovos-tts-plugin-azure", "fast and accurate, but requires api key"),
+    ("ovos-tts-plugin-mimic3",
+     "self hosted, models available for several languages, abandoned project, precursor to piper"),
+    ("neon-tts-plugin-larynx-server",
+     "self hosted, models available for several languages, abandoned project, precursor to mimic3"),
+    ("ovos-tts-plugin-marytts",
+     "self hosted, models available for several languages, many projects offer compatible apis")
+]
+TTS_OFFLINE_PREFS = [
+    ("ovos-tts-plugin-piper", "lightweight, models available for several languages"),
+    ("ovos-tts-plugin-mimic3",
+     "lightweight, models available for several languages, abandoned project, precursor to piper"),
+    ("ovos-tts-plugin-mimic", "lightweight, sounds robotic, english only"),
+    ("ovos-tts-plugin-pico", "very lightweight, limited language support"),
+    ("ovos-tts-plugin-espeakng", "very lightweight, sounds robotic, extensive language support")
+]
+if not LANG.startswith("en"):
+    TTS_OFFLINE_PREFS.pop(2)  # mimic 1 is english only
+
 STT_RPI_BLACKLIST = ["ovos-stt-plugin-fasterwhisper", "neon-stt-plugin-nemo"]
 STT_ONLINE_PREFS = [
     ("ovos-stt-plugin-chromium", "multilingual, free, unmatched performance, but does not respect your privacy"),
-    ("ovos-stt-plugin-server", "multilingual, variable performance, self hosted, community maintained public  (fasterwhisper)"),
+    ("ovos-stt-plugin-server",
+     "multilingual, variable performance, self hosted, community maintained public  (fasterwhisper)"),
     ("ovos-stt-plugin-azure", "multilingual, fast and accurate, but requires api key")
 ]
 if not HAS_GPU:
@@ -1131,7 +1127,7 @@ else:
         ("ovos-stt-plugin-vosk", "monolingual models, not very accurate, lightweight, suitable for raspberry pi"),
         ("ovos-stt-plugin-pocketsphinx", "worst accuracy, only use as last resort")
     ]
-            
+
 RERANKER_RPI_BLACKLIST = ["ovos-flashrank-reranker-plugin"]
 RERANKER_PREFS = [
     ("ovos-flashrank-reranker-plugin", "best, lightweight and fast"),
