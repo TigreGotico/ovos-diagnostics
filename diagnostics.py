@@ -12,6 +12,8 @@ from ovos_plugin_manager.skills import find_skill_plugins
 from ovos_utils.gui import is_installed
 from ovos_utils.log import LOG
 from ovos_workshop.skills.common_play import OVOSCommonPlaybackSkill
+from ovos_workshop.skills.fallback import FallbackSkill
+from ovos_workshop.skills.common_query_skill import CommonQuerySkill
 
 CONFIG = Configuration()
 
@@ -78,7 +80,7 @@ def listener():
 
 
 @click.group()
-def skills():
+def core():
     """Manage skills plugins"""
     pass
 
@@ -111,7 +113,7 @@ def audio():
 cli.add_command(language)
 cli.add_command(audio)
 cli.add_command(listener)
-cli.add_command(skills)
+cli.add_command(core)
 cli.add_command(phal)
 cli.add_command(gui)
 
@@ -240,7 +242,7 @@ def scan_vad():
         click.echo(f" {idx} - {plugin}")
 
 
-@skills.command()
+@core.command()
 def scan_pipeline():
     """List available pipeline plugins"""
     click.echo("Listing Pipeline Plugins...")
@@ -265,7 +267,7 @@ def scan_pipeline():
         click.echo(f" {idx} - {plugin}")
 
 
-@skills.command()
+@core.command()
 def scan_reranker():
     """List available reranker plugins"""
     click.echo("Listing ReRanker Plugins...")
@@ -274,7 +276,7 @@ def scan_reranker():
         click.echo(f" {idx} - {plugin}")
 
 
-@skills.command()
+@core.command()
 def scan_utterance():
     """List available utterance plugins"""
     click.echo("Listing Utterance Plugins...")
@@ -283,7 +285,7 @@ def scan_utterance():
         click.echo(f" {idx} - {plugin}")
 
 
-@skills.command()
+@core.command()
 def scan_skills():
     """List available skills"""
     from ovos_plugin_manager.skills import find_skill_plugins as finder
@@ -293,7 +295,7 @@ def scan_skills():
         click.echo(f" {idx} - {plugin}")
 
 
-@skills.command()
+@core.command()
 def scan_metadata():
     """List available metadata plugins"""
     click.echo("Listing Metadata Plugins...")
@@ -638,7 +640,7 @@ def recommend_tts_transformers():
     click.echo("Nothing to recommend")
 
 
-@skills.command()
+@core.command()
 def recommend_pipeline():
     """recommend Pipeline config """
     PIPELINE = CONFIG.get("intents", {}).get("pipeline", [])
@@ -646,31 +648,38 @@ def recommend_pipeline():
                           for plug in find_skill_plugins().values()]) or True
     HAS_LEGACY_OCP_SKILLS = any([issubclass(plug, CommonPlaySkill)
                                  for plug in find_skill_plugins().values()])
+    HAS_CQ_SKILLS = any([issubclass(plug, CommonQuerySkill)
+                         for plug in find_skill_plugins().values()])
+    HAS_FALLBACK_SKILLS = any([issubclass(plug, FallbackSkill)
+                               for plug in find_skill_plugins().values()])
     OCP_IN_PIPELINE = any([p.startswith("ocp_") for p in PIPELINE if p != "ocp_legacy"])
+    FALLBACK_IN_PIPELINE = any([p.startswith("fallback_") for p in PIPELINE])
+    CQ_IN_PIPELINE = "common_qa" in PIPELINE
     PADATIOUS_IN_PIPELINE = any([p.startswith("padatious_") for p in PIPELINE])
     PADACIOSO_IN_PIPELINE = any([p.startswith("padacioso_") for p in PIPELINE])
     LEGACY_OCP_IN_PIPELINE = "ocp_legacy" in PIPELINE
 
     if PADATIOUS_IN_PIPELINE:
         if not importlib.util.find_spec("padatious"):
-            click.echo(
-                "WARNING: 'padatious' is not installed, intent matching will be much slower via 'padacioso' fallback")
+            click.echo("WARNING: 'padatious' is not installed, intent matching will be much slower via 'padacioso' fallback")
     if PADACIOSO_IN_PIPELINE:
         click.echo("WARNING: 'padacioso' is enabled in pipeline config, expect latency in intent matching")
+    if HAS_CQ_SKILLS and not CQ_IN_PIPELINE:
+        click.echo("WARNING: Common Query Skills detected, but common query not in 'pipeline' config, add 'common_qa' to your mycroft.conf")
+
+    if HAS_FALLBACK_SKILLS and not FALLBACK_IN_PIPELINE:
+        click.echo("WARNING: Fallback Skills detected, but fallback not in 'pipeline' config, add 'fallback_high'/'fallback_medium'/'fallback_low' to your mycroft.conf")
 
     if HAS_OCP_SKILLS and not OCP_IN_PIPELINE:
-        click.echo(
-            "WARNING: OCP Skills detected, but OCP not in 'pipeline' config, add 'ocp_high' to your mycroft.conf to enable media queries")
+        click.echo("WARNING: OCP Skills detected, but OCP not in 'pipeline' config, add 'ocp_high'/'ocpmedium'/'ocp_low' to your mycroft.conf to enable media queries")
 
     if HAS_LEGACY_OCP_SKILLS and not LEGACY_OCP_IN_PIPELINE:
-        click.echo(
-            "ERROR: Deprecated Mycroft CommonPlay skills detected, you need to add 'ocp_legacy' to your 'pipeline' config in mycroft.conf")
+        click.echo("ERROR: Deprecated Mycroft CommonPlay skills detected, you need to add 'ocp_legacy' to your 'pipeline' config in mycroft.conf")
     elif not HAS_LEGACY_OCP_SKILLS and LEGACY_OCP_IN_PIPELINE:
-        click.echo(
-            "WARNING: your pipeline contains 'ocp_legacy', but no Mycroft CommonPlay skills installed, expect latency in intent matching")
+        click.echo("WARNING: your pipeline contains 'ocp_legacy', but no Mycroft CommonPlay skills installed, expect latency in intent matching")
 
 
-@skills.command()
+@core.command()
 def recommend_skills():
     """recommend skills"""
     from ovos_plugin_manager.skills import find_skill_plugins as finder
@@ -793,7 +802,7 @@ def recommend_skills():
             click.echo(f"RECOMMENDED SKILL: '{skill}' is the companion skill to '{plug}' PHAL plugin")
 
 
-@skills.command()
+@core.command()
 def recommend_reranker():
     """recommend TTS config """
     from ovos_plugin_manager.solvers import find_multiple_choice_solver_plugins as finder
@@ -974,7 +983,7 @@ def recommend_vad():
                 click.echo("RECOMMENDATION: not sure what to recommend")
 
 
-@skills.command()
+@core.command()
 def recommend_utterance_transformers():
     """recommend Utterance Transformers config """
     from ovos_plugin_manager.text_transformers import find_utterance_transformer_plugins as finder
@@ -994,7 +1003,7 @@ def recommend_utterance_transformers():
     click.echo("Nothing to recommend")
 
 
-@skills.command()
+@core.command()
 def recommend_metadata_transformers():
     """recommend Metadata Transformers config """
     from ovos_plugin_manager.metadata_transformers import find_metadata_transformer_plugins as finder
@@ -1104,6 +1113,71 @@ def recommend_platform():
                 click.echo(f"UNINSTALL: '{p}', it is for Mark2 DevKit only")
 
 
+@language.command()
+def recommend_detector():
+    """recommend language detector config """
+    click.echo("Translation plugin recommendations:")
+    from ovos_plugin_manager.language import find_lang_detect_plugins as finder
+    plugs = list(finder())
+    if not plugs:
+        click.echo("WARNING: No Translation plugins installed!!!")
+    else:
+        click.echo("Available plugins:")
+        for p in plugs:
+            click.echo(f" - {p}")
+
+        for p, info in DETECT_OFFLINE_PREFS:
+            if p in plugs:
+                if IS_RPI and p in DETECT_RPI_BLACKLIST:
+                    continue
+                click.echo(f"RECOMMENDATION:  {p}' - {info}")
+                break
+        else:
+            for p, info in DETECT_ONLINE_PREFS:
+                if p in plugs:
+                    if IS_RPI and p in DETECT_RPI_BLACKLIST:
+                        continue
+                    click.echo(f"RECOMMENDATION:  {p}' - {info}")
+                    break
+            else:
+                if len(plugs) == 1:
+                    click.echo(f"'RECOMMENDATION: {plugs[0]}' - only installed plugin")
+                else:
+                    click.echo("RECOMMENDATION: not sure what to recommend")
+
+
+@language.command()
+def recommend_translator():
+    """recommend translation config """
+    click.echo("Translation plugin recommendations:")
+    from ovos_plugin_manager.language import find_tx_plugins as finder
+    plugs = list(finder())
+    if not plugs:
+        click.echo("WARNING: No Translation plugins installed!!!")
+    else:
+        click.echo("Available plugins:")
+        for p in plugs:
+            click.echo(f" - {p}")
+
+        for p, info in TRANSLATE_ONLINE_PREFS:
+            if p in plugs:
+                if IS_RPI and p in TRANSLATE_RPI_BLACKLIST:
+                    continue
+                click.echo(f"RECOMMENDATION:  {p}' - {info}")
+                break
+        else:
+            for p, info in TRANSLATE_OFFLINE_PREFS:
+                if p in plugs:
+                    if IS_RPI and p in TRANSLATE_RPI_BLACKLIST:
+                        continue
+                    click.echo(f"RECOMMENDATION:  {p}' - {info}")
+                    break
+            else:
+                if len(plugs) == 1:
+                    click.echo(f"'RECOMMENDATION: {plugs[0]}' - only installed plugin")
+                else:
+                    click.echo("RECOMMENDATION: not sure what to recommend")
+
 #######################################################
 # Recommendations are defined here, manually maintained
 EDGE_LANGS = ["af", "sq", "am", "ar", "az", "bn", "bs", "bg", "my", "ca", "zh", "hr", "cs", "da", "nl", "en", "et", "fil", "fi", "fr", "gl", "ka", "de", "el", "gu", "he", "hi", "hu", "is", "id", "ga", "it", "ja", "jv", "kn", "kk", "km", "ko", "lo", "lv", "lt", "mk", "ms", "ml", "mt", "mr", "mn", "ne", "nb", "ps", "fa", "pl", "pt", "ro", "ru", "sr", "si", "sk", "sl", "so", "es", "su", "sw", "sv", "ta", "th", "tr", "uk", "ur", "uz", "vi", "cy", "zu"]
@@ -1192,6 +1266,33 @@ VAD_PREFS = [
     ("ovos-vad-plugin-noise", "worst accuracy, lightweight, silence based, no external dependencies, configurable"),
     ("ovos-vad-plugin-precise", "moderate accuracy, lightweight, needs tweaking to work well"),
     ("ovos-vad-plugin-webrtcvad", "lightweight, silence based, has issues in some platforms")
+]
+
+TRANSLATE_RPI_BLACKLIST = ["ovos-translate-plugin-nllb"]
+TRANSLATE_ONLINE_PREFS = [
+    ("ovos-google-translate-plugin", "free, very good accuracy, low latency"),
+    ("ovos-translate-plugin-server", "self hosted, community maintained public servers (NLLB)"),
+    ("deepl_translate_plug", "very good accuracy, requires API key")
+]
+TRANSLATE_OFFLINE_PREFS = [
+    ("ovos-translate-plugin-nllb", "uses the NLLB-200 models to translate text between different languages, GPU strongly recommended")
+]
+
+DETECT_RPI_BLACKLIST = ["ovos-lang-detector-fasttext-plugin"]
+DETECT_ONLINE_PREFS = [
+    ("ovos-lang-detector-plugin-server", "self hosted, community maintained public servers (fasttext)"),
+    ("ovos-google-lang-detector-plugin", "free, very good accuracy"),
+    ("deepl_detection_plug", "very good accuracy, requires API key")
+]
+DETECT_OFFLINE_PREFS = [
+    ("ovos-lang-detector-fasttext-plugin", "state of the art, GPU recommended") if HAS_GPU else ("", ""),
+    ("ovos-lang-detector-plugin-cld3", "fast and lightweight, CLD3 is a neural network model for language identification"),
+    ("ovos-lang-detector-plugin-cld2", "fast and lightweight, CLD2 is a Naïve Bayesian classifier, detects over 80 languages"),
+    ("ovos-lang-detector-plugin-lingua-podre", "dead simple word list based language detection"),
+    ("ovos-lang-detector-plugin-langdetect", "Detect language of a text using naive Bayesian filter"),
+    ("ovos-lang-detector-plugin-fastlang", "Built upon the nltk stopwords, without depending on nltk itself"),
+    ("ovos-lang-detector-plugin-voter", "combines other plugins for improved accuracy"),
+    ("ovos-lang-detect-ngram-lm", "toy model, placeholder provided by 'ovos-classifiers'")
 ]
 
 OCP_ESSENTIAL = {
