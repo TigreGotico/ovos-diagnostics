@@ -1,0 +1,2 @@
+click
+ovos-core>=0.0.8a125
